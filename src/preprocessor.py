@@ -11,14 +11,18 @@ class Preprocessor:
         min_genes: int,
         min_cells: int,
         num_hvgs: int,
+        num_jobs: int = 2,
     ) -> None:
         self.data_dir = data_dir
         self.min_genes = min_genes
         self.min_cells = min_cells
         self.num_hvgs = num_hvgs
         self.out_filename = out_filename
+        self.num_jobs = num_jobs
 
     def process(self):
+        sc.settings.n_jobs = self.num_jobs
+
         self._read_10x_mtx_file()
         self._filter_low_count_cells_and_genes()
         self._threshold_filtering()
