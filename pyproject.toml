@@ -1,0 +1,14 @@
+[project]
+name = "synthgene"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "anndata>=0.12.3",
+    "ipykernel>=7.0.1",
+    "pandas>=2.3.3",
+    "scanpy>=1.11.4",
+    "scipy>=1.16.2",
+    "scvi>=0.6.8",
+]
