@@ -52,8 +52,6 @@ class Critic(nn.Module):
         self.feature_extractor = self._make_block_chain(n_blocks, base_features)
         self.output = nn.Linear(base_features, 1)
 
-        self.sigmoid = nn.Sigmoid()
-
     def _block(
         self, in_features: int, out_features: int, use_norm: bool = True
     ) -> nn.Sequential:
@@ -81,7 +79,6 @@ class Critic(nn.Module):
         x = self.input(x)
         x = self.feature_extractor(x)
         x = self.output(x)
-        x = self.sigmoid(x)
 
         return x
 
