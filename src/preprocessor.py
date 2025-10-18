@@ -32,6 +32,8 @@ class Preprocessor:
 
         self.adata.write(os.path.join(self.data_dir, self.out_filename))
 
+        return self.adata
+
     def _read_10x_mtx_file(self):
         self.adata = sc.read_10x_mtx(
             path=self.data_dir, var_names="gene_symbols", cache=True

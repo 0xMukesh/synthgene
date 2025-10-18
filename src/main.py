@@ -1,10 +1,6 @@
-import warnings
 from src.preprocessor import Preprocessor
 from src.dataset import PBMC3kDataset
-
-warnings.simplefilter("ignore", FutureWarning)
-warnings.simplefilter("ignore", UserWarning)
-warnings.simplefilter("ignore", RuntimeWarning)
+from src.decoder import Decoder
 
 pp = Preprocessor(
     data_dir="./data/3k_pbmc/filtered_gene_bc_matrices/hg19/",
@@ -14,6 +10,10 @@ pp = Preprocessor(
     num_hvgs=2000,
 )
 
+adata = pp.process()
+
 dataset = PBMC3kDataset(
     "./data/3k_pbmc/filtered_gene_bc_matrices/hg19/preprocessed_3k_pbmc.h5ad"
 )
+
+decoder = Decoder(adata)
