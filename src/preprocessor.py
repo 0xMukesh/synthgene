@@ -1,13 +1,12 @@
 import scanpy as sc
 import numpy as np
-import os
 
 
 class Preprocessor:
     def __init__(
         self,
         data_dir: str,
-        out_filename: str,
+        out_file_path: str,
         min_genes: int,
         min_cells: int,
         num_hvgs: int,
@@ -17,7 +16,7 @@ class Preprocessor:
         self.min_genes = min_genes
         self.min_cells = min_cells
         self.num_hvgs = num_hvgs
-        self.out_filename = out_filename
+        self.out_file_path = out_file_path
         self.num_jobs = num_jobs
 
     def process(self):
@@ -30,7 +29,7 @@ class Preprocessor:
         self._extract_hvgs()
         self._regress_out_values_and_scale()
 
-        self.adata.write(os.path.join(self.data_dir, self.out_filename))
+        self.adata.write(self.out_file_path)
 
         return self.adata
 
