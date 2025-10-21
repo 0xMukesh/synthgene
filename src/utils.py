@@ -1,5 +1,7 @@
 import torch
 import scanpy as sc
+import scipy.sparse as sp
+import numpy as np
 import anndata as ad
 import matplotlib.pyplot as plt
 from torch import nn
@@ -37,58 +39,53 @@ def calculate_grad_penalty(
     return gradient_penalty
 
 
-def compute_umap(
-    adata: ad.AnnData, n_neighbors: int = 10, n_pcs: int = 30, random_state: int = 0
-):
-    sc.pp.neighbors(adata, n_neighbors, n_pcs)
-    sc.tl.leiden(
-        adata,
-        0.7,
-        flavor="igraph",
-        n_iterations=2,
-        directed=False,
-        random_state=random_state,
-    )
-    sc.tl.umap(adata, random_state=random_state)
-
-
 def run_eval(
-    real_adata: ad.AnnData,
+    adata: ad.AnnData,
     gen: nn.Module,
     critic: nn.Module,
+    n_cells: int,
     latent_dim: int,
     device: Device,
 ):
+    if adata.X is None:
+        raise ValueError("adata.X is None")
+
     gen.eval()
     critic.eval()
 
     with torch.no_grad():
-        noise = torch.randn(real_adata.n_obs, latent_dim).to(device)
+        noise = torch.randn(n_cells, latent_dim).to(device)
         synthetic_data = gen(noise)
 
-    synthetic_data = gen(noise).detach().cpu().numpy()
-    synthetic_adata = ad.AnnData(X=synthetic_data)
-    synthetic_adata.var_names = real_adata.var_names.to_list()
+    synthetic_data = synthetic_data.detach().cpu().numpy()
+    real_data = adata.X[:n_cells, :]
 
-    compute_umap(synthetic_adata)
-    compute_umap(real_adata)
+    if sp.issparse(real_data):
+        real_data = real_data.toarray()  # type: ignore
+    else:
+        real_data = np.asarray(real_data)
 
-    _, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
+    combined_data = np.concatenate([real_data, synthetic_data], axis=0)
+    combined_adata = ad.AnnData(X=combined_data)
+    combined_adata.var_names = adata.var_names.to_list()
 
-    sc.pl.umap(
-        real_adata,
-        color="leiden",
-        ax=ax1,
+    cell_types = ["real"] * n_cells + ["synthetic"] * n_cells
+    combined_adata.obs["cell_type"] = cell_types
+
+    sc.pp.pca(combined_adata, n_comps=min(30, combined_adata.n_vars - 1))
+    sc.pp.neighbors(combined_adata, n_pcs=30)
+    sc.tl.tsne(combined_adata)
+
+    _, ax = plt.subplots(figsize=(12, 8))
+
+    sc.pl.tsne(
+        combined_adata,
+        color="cell_type",
+        palette={"real": "blue", "synthetic": "red"},
+        size=50,
+        ax=ax,
         show=False,
-        title="umap of real data",
-    )
-
-    sc.pl.umap(
-        synthetic_adata,
-        color="leiden",
-        ax=ax2,
-        show=False,
-        title="umap of synthetic data",
+        title=f"t-SNE visualization",
     )
 
     plt.tight_layout()

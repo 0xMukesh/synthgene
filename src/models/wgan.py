@@ -2,6 +2,20 @@ import torch
 from torch import nn
 
 
+class LibrarySizeNormalization(nn.Module):
+    def __init__(self, library_size: int, eps: float = 1e-8) -> None:
+        super().__init__()
+
+        self.library_size = library_size
+        self.eps = eps
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        cell_sums = x.sum(dim=1, keepdim=True) + self.eps
+        x = x * self.library_size / cell_sums
+
+        return x
+
+
 class Generator(nn.Module):
     def __init__(
         self,
@@ -9,12 +23,15 @@ class Generator(nn.Module):
         output_size: int,
         n_blocks: int = 2,
         base_features: int = 256,
+        library_size: int = 20_000,
     ) -> None:
         super().__init__()
 
         self.input = self._block(latent_dim, base_features)
         self.feature_extractor = self._make_block_chain(n_blocks, base_features)
         self.output = nn.Linear(base_features * 2**n_blocks, output_size)
+        self.relu = nn.ReLU(inplace=True)
+        self.lsn = LibrarySizeNormalization(library_size)
 
     def _block(self, in_features: int, out_features: int) -> nn.Sequential:
         layers = []
@@ -38,6 +55,8 @@ class Generator(nn.Module):
         x = self.input(x)
         x = self.feature_extractor(x)
         x = self.output(x)
+        x = self.relu(x)
+        x = self.lsn(x)
 
         return x
 

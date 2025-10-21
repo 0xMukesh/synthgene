@@ -1,6 +1,7 @@
 import torch
 from torch.utils.data import Dataset
 import scanpy as sc
+import scipy.sparse as sp
 
 
 class PBMC3kDataset(Dataset):
@@ -21,6 +22,10 @@ class PBMC3kDataset(Dataset):
             raise ValueError("gene expression data is none")
 
         gene_expr = self.adata.X[idx]
+
+        if sp.issparse(gene_expr):
+            gene_expr = gene_expr.toarray().squeeze()  # type: ignore
+
         tensor = torch.tensor(gene_expr, dtype=torch.float32)
 
         return tensor

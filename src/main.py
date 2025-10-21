@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader
 from dataclasses import dataclass
 
 from src.preprocessor import Preprocessor
-from src.dataset import PBMC3kDataset
+from src.datasets.pbmc3k import PBMC3kDataset
 from src.models.wgan import Generator, Critic
 from src.utils import calculate_grad_penalty, run_eval
 
@@ -15,24 +15,24 @@ class Config:
     checkpoints_dir = "checkpoints"
     preprocessed_out_file_path = "/kaggle/working/preprocessed_3k_pbmc.h5ad"
 
-    min_genes = 200
-    min_cells = 3
-    num_hvgs = 2000
-
-    epochs = 3
+    epochs = 6
     batch_size = 32
-
-    latent_dim = 128
-    n_blocks = 2
-    base_features = 256
-
     lr_gen = 1e-4
     lr_critic = 1e-4
     critic_iter = 5
     lambda_gp = 10
 
+    min_cells = 3
+    min_genes = 10
+
+    latent_dim = 128
+    n_blocks = 2
+    base_features = 256
+    library_size = 20_000
+
     print_after_every = 20
     save_after_every = 5
+    run_eval_after_every = 2
 
 
 config = Config()
@@ -43,7 +43,6 @@ pp = Preprocessor(
     config.preprocessed_out_file_path,
     config.min_genes,
     config.min_cells,
-    config.num_hvgs,
 )
 
 adata = pp.process()
@@ -55,9 +54,9 @@ data_loader = DataLoader(
 )
 
 gen = Generator(
-    config.latent_dim, config.num_hvgs, config.n_blocks, config.base_features
+    config.latent_dim, adata.n_vars, config.n_blocks, config.base_features
 ).to(device)
-critic = Critic(config.num_hvgs, config.n_blocks, config.base_features).to(device)
+critic = Critic(adata.n_vars, config.n_blocks, config.base_features).to(device)
 
 optim_gen = torch.optim.Adam(gen.parameters(), lr=config.lr_gen, betas=(0.0, 0.9))
 optim_critic = torch.optim.Adam(
@@ -77,7 +76,7 @@ for epoch in range(config.epochs):
 
         # critic: max(E[critic(real)] - E[critic(gen(noise))])
         for _ in range(config.critic_iter):
-            noise = torch.randn(real.size(0), config.latent_dim).to(device)
+            noise = torch.randn(real.shape[0], config.latent_dim).to(device)
             fake = gen(noise)
 
             C_real = critic(real)
@@ -112,7 +111,8 @@ for epoch in range(config.epochs):
                 f"[epoch {epoch + 1}, batch {batch_idx + 1}/{len(data_loader)}] gen loss: {G_loss.item():.4f}, critic loss: {avg_batch_critic_loss:.4f}"
             )
 
-    run_eval(adata, gen, critic, config.latent_dim, device)
+    if (epoch + 1) % config.run_eval_after_every == 0:
+        run_eval(adata, gen, critic, 2000, config.latent_dim, device)
 
     avg_epoch_loss_gen = epoch_loss_gen / len(data_loader)
     avg_epoch_loss_critic = epoch_loss_critic / len(data_loader)
