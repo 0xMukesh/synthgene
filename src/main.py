@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from src.preprocessor import Preprocessor
 from src.datasets.pbmc3k import PBMC3kDataset
 from src.models.wgan import Generator, Critic
-from src.utils import calculate_grad_penalty, run_eval
+from src.utils import calculate_grad_penalty, run_gen_eval
 
 
 @dataclass
@@ -15,7 +15,7 @@ class Config:
     checkpoints_dir = "checkpoints"
     preprocessed_out_file_path = "/kaggle/working/preprocessed_3k_pbmc.h5ad"
 
-    epochs = 6
+    epochs = 800
     batch_size = 32
     lr_gen = 1e-4
     lr_critic = 1e-4
@@ -112,7 +112,7 @@ for epoch in range(config.epochs):
             )
 
     if (epoch + 1) % config.run_eval_after_every == 0:
-        run_eval(adata, gen, critic, 2000, config.latent_dim, device)
+        run_gen_eval(adata, gen, critic, 2000, config.latent_dim, device)
 
     avg_epoch_loss_gen = epoch_loss_gen / len(data_loader)
     avg_epoch_loss_critic = epoch_loss_critic / len(data_loader)

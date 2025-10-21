@@ -39,7 +39,7 @@ def calculate_grad_penalty(
     return gradient_penalty
 
 
-def run_eval(
+def run_gen_eval(
     adata: ad.AnnData,
     gen: nn.Module,
     critic: nn.Module,
